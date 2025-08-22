@@ -1,0 +1,68 @@
+services:
+  api: &main_app
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    image: loop:${OSMOSIS_VERSION:-latest}
+    restart: always
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      OSMOSIS_HOST: 0.0.0.0
+      OSMOSIS_DB_HOST: loop-db
+      OSMOSIS_DB_PORT: 5432
+      OSMOSIS_DB_USER: loop
+      OSMOSIS_DB_PASS: loop
+      OSMOSIS_DB_BASE: loop
+      OSMOSIS_REDIS_HOST: loop-redis
+
+  db:
+    image: postgres:16.3-bullseye
+    hostname: loop-db
+    environment:
+      POSTGRES_PASSWORD: "loop"
+      POSTGRES_USER: "loop"
+      POSTGRES_DB: "loop"
+    volumes:
+      - loop-db-data:/var/lib/postgresql/data
+    restart: always
+    healthcheck:
+      test: pg_isready -U loop
+      interval: 2s
+      timeout: 3s
+      retries: 40
+
+  migrator:
+    image: loop:${OSMOSIS_VERSION:-latest}
+    restart: "no"
+    command: alembic upgrade head
+    environment:
+      OSMOSIS_DB_HOST: loop-db
+      OSMOSIS_DB_PORT: 5432
+      OSMOSIS_DB_USER: loop
+      OSMOSIS_DB_PASS: loop
+      OSMOSIS_DB_BASE: loop
+    depends_on:
+      db:
+        condition: service_healthy
+
+  redis:
+    image: bitnami/redis:6.2.5
+    hostname: "loop-redis"
+    restart: always
+    environment:
+      ALLOW_EMPTY_PASSWORD: "yes"
+    healthcheck:
+      test: redis-cli ping
+      interval: 1s
+      timeout: 3s
+      retries: 50
+
+volumes:
+  loop-db-data:
+    name: loop-db-data
