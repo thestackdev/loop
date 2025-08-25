@@ -64,6 +64,12 @@ class Settings(BaseSettings):
     sentry_dsn: Optional[str] = None
     sentry_sample_rate: float = 1.0
 
+    # Azure OpenAI configuration
+    azure_openai_api_key: str = os.getenv("AZURE_OPENAI_API_KEY", "")
+    azure_openai_endpoint: str = os.getenv("AZURE_OPENAI_ENDPOINT", "")
+    azure_openai_api_version: str = os.getenv("AZURE_OPENAI_API_VERSION", "2024-12-01-preview")
+    azure_openai_model_name: str = os.getenv("AZURE_OPENAI_MODEL_NAME", "gpt-5-mini")
+
     @property
     def db_url(self) -> URL:
         """

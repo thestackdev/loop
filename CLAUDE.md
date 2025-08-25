@@ -324,3 +324,110 @@ Learn alongside peers, compare progress, and engage in collaborative challenges.
 3. **Multi-Dimensional Personalization**: Adapts to learning style, pace, goals, and cognitive state
 4. **Evidence-Based Techniques**: Every feature backed by learning science research
 5. **Continuous Evolution**: System learns and improves from collective user data
+
+---
+
+## 🧪 API Testing & Quality Assurance
+
+### Comprehensive API Testing Protocol
+
+**Purpose**: Ensure all API endpoints function correctly through automated testing with complete lifecycle management.
+
+**Core Testing Features**:
+- **Complete Endpoint Coverage**: Tests all API routes (health, auth, learning, content generation)
+- **Automated Test Data Management**: Creates, tracks, and cleans up test resources
+- **Authentication Flow Validation**: Tests user registration, login, and protected endpoints
+- **Resource Lifecycle Testing**: Validates CRUD operations for all entities
+- **Performance Monitoring**: Tracks response times and success rates
+
+### Testing Script Usage
+
+**Location**: `backend/api_test_collection.py`
+
+**Prerequisites**:
+```bash
+# Install test dependencies
+pip install -r backend/requirements-test.txt
+
+# Start the backend server
+cd backend && python -m uvicorn loop.web.application:app --reload
+```
+
+**Usage Patterns**:
+
+```bash
+# Run complete API test suite
+python backend/api_test_collection.py --base-url http://localhost:8000 --run-tests
+
+# Run tests and save results for analysis
+python backend/api_test_collection.py --base-url http://localhost:8000 --run-tests --save-results
+
+# Cleanup previously created test resources
+python backend/api_test_collection.py --base-url http://localhost:8000 --cleanup-only
+```
+
+### Testing Coverage
+
+**Authentication & User Management**:
+- User registration and verification
+- JWT token authentication
+- Protected endpoint access
+- User profile operations
+
+**Learning System**:
+- Topic and subtopic CRUD operations
+- User topic subscriptions
+- Progress tracking and updates
+- Daily feed generation
+- Learning session management
+- Spaced repetition review scheduling
+
+**Content Generation**:
+- AI-powered content creation for subtopics
+- Generated content retrieval and management
+- Content type filtering and validation
+
+**System Health**:
+- Health check endpoints
+- Echo service validation
+- Error handling verification
+
+### Mandatory Testing Protocol
+
+**IMPORTANT: This testing protocol is mandatory for all API changes**
+
+**When to Run Tests**:
+1. **Before any new API endpoint creation** - Validate existing functionality
+2. **After implementing new endpoints** - Ensure new endpoints work correctly
+3. **Before code commits** - Verify no regressions introduced
+4. **After major refactoring** - Confirm all endpoints still functional
+5. **During deployment preparation** - Final validation before production
+
+**Test Execution Requirements**:
+- All tests must pass with 100% success rate
+- No manual cleanup of test resources (automated cleanup required)
+- Performance benchmarks must not degrade
+- Authentication flows must be validated
+- Complete CRUD operations must be tested for all entities
+
+**Failure Response Protocol**:
+- If any test fails, investigate and fix before proceeding
+- Document any known issues or limitations
+- Update test cases when API contracts change
+- Ensure test data cleanup occurs even on failures
+
+### Integration with Development Workflow
+
+**Development Checklist**:
+1. ✅ Run test suite before starting development
+2. ✅ Create/update API endpoints following existing patterns
+3. ✅ Run test suite after implementation
+4. ✅ Fix any failing tests
+5. ✅ Commit changes only after all tests pass
+6. ✅ Document any new testing requirements
+
+**Continuous Quality Assurance**:
+- Regular test execution prevents API regressions
+- Comprehensive resource cleanup maintains database integrity
+- Performance monitoring identifies bottlenecks early
+- Authentication testing ensures security compliance

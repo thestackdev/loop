@@ -27,6 +27,7 @@ pymongo = "^4.10.1"
 prometheus-client = "^0.21.1"
 prometheus-fastapi-instrumentator = "7.0.0"
 sentry-sdk = "^2.19.2"
+openai = "^1.101.0"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -154,7 +155,7 @@ enable_routers = "True"
 enable_kafka = "None"
 enable_loguru = "None"
 traefik_labels = "None"
-add_dummy = "True"
+add_dummy = "False"
 orm = "sqlalchemy"
 self_hosted_swagger = "None"
 prometheus_enabled = "True"
