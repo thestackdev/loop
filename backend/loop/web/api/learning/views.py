@@ -87,7 +87,7 @@ async def update_topic(
     """Update a topic."""
     dao = LearningDAO(session)
     topic = await dao.topics.update_topic(
-        topic_id, 
+        topic_id,
         **topic_data.model_dump(exclude_unset=True)
     )
     if not topic:
@@ -117,12 +117,12 @@ async def create_subtopic(
 ) -> Any:
     """Create a new subtopic for a topic."""
     dao = LearningDAO(session)
-    
+
     # Verify topic exists
     topic = await dao.topics.get_topic(topic_id)
     if not topic:
         raise HTTPException(status_code=404, detail="Topic not found")
-    
+
     # Create subtopic
     subtopic_dict = subtopic_data.model_dump()
     subtopic_dict["topic_id"] = topic_id
@@ -192,22 +192,22 @@ async def subscribe_to_topic(
 ) -> Any:
     """Subscribe user to a topic."""
     dao = LearningDAO(session)
-    
+
     # Verify topic exists
     topic = await dao.topics.get_topic(topic_data.topic_id)
     if not topic:
         raise HTTPException(status_code=404, detail="Topic not found")
-    
+
     # Check if user is already subscribed
     existing = await dao.user_topics.get_user_topic(
         current_user.id, topic_data.topic_id
     )
     if existing:
         raise HTTPException(
-            status_code=400, 
+            status_code=400,
             detail="User already subscribed to this topic"
         )
-    
+
     # Create subscription
     user_topic_dict = topic_data.model_dump()
     user_topic_dict["user_id"] = current_user.id
@@ -313,7 +313,7 @@ async def start_learning_session(
 ) -> Any:
     """Start a new learning session."""
     dao = LearningDAO(session)
-    
+
     # Verify progress exists
     progress = await dao.progress.get_progress(
         current_user.id,
@@ -321,7 +321,7 @@ async def start_learning_session(
     )
     if not progress:
         raise HTTPException(status_code=404, detail="Progress not found")
-    
+
     # Create session
     session_dict = session_data.model_dump()
     session_dict["user_id"] = current_user.id
@@ -338,12 +338,12 @@ async def update_learning_session(
 ) -> Any:
     """Update a learning session."""
     dao = LearningDAO(session)
-    
+
     # Verify session belongs to user
     session_obj = await dao.sessions.get_session(session_id)
     if not session_obj or session_obj.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Session not found")
-    
+
     updated_session = await dao.sessions.update_session(
         session_id,
         **session_data.model_dump(exclude_unset=True)
@@ -370,9 +370,9 @@ async def generate_learning_content(
 ) -> dict[str, str]:
     """Generate complete learning content for a subtopic."""
     from loop.services.learning.ai_content import ContentWorkflowService
-    
+
     workflow_service = ContentWorkflowService(session)
-    
+
     try:
         results = await workflow_service.generate_complete_learning_content(subtopic_id)
         return {
@@ -393,21 +393,49 @@ async def generate_daily_feed(
 ) -> dict[str, Any]:
     """Generate today's learning feed for the current user."""
     from loop.services.learning.feed_generator import FeedGenerationService
-    
-    feed_service = FeedGenerationService(session)
-    feed = await feed_service.generate_daily_feed(current_user.id)
-    
-    if not feed:
+
+    try:
+        feed_service = FeedGenerationService(session)
+        feed, is_existing = await feed_service.generate_daily_feed(current_user.id)
+
+        if not feed:
+            # Check if user has any active subscriptions
+            user_topics = await feed_service.dao.user_topics.get_user_topics(
+                current_user.id, is_active=True
+            )
+
+            if not user_topics:
+                raise HTTPException(
+                    status_code=400,
+                    detail="No active topic subscriptions found. Please subscribe to topics first."
+                )
+
+            # User has topics but no subtopics to learn
+            raise HTTPException(
+                status_code=400,
+                detail="All subscribed topics are completed. Consider subscribing to new topics."
+            )
+
         return {
-            "message": "No active topics found. Please subscribe to topics first.",
-            "feed": None,
+            "message": "Daily feed retrieved successfully" if is_existing else "Daily feed generated successfully",
+            "feed_id": str(feed.id),
+            "subtopic_id": str(feed.subtopic_id),
+            "is_existing": is_existing,
         }
-    
-    return {
-        "message": "Daily feed generated successfully",
-        "feed_id": str(feed.id),
-        "subtopic_id": str(feed.subtopic_id),
-    }
+
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
+    except Exception as e:
+        # Log the full error for debugging
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Feed generation failed for user {current_user.id}: {str(e)}", exc_info=True)
+
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate daily feed: {str(e)}"
+        )
 
 
 @router.put("/feeds/{feed_id}/complete")
@@ -418,13 +446,13 @@ async def complete_daily_feed(
 ) -> dict[str, str]:
     """Mark a daily feed as completed."""
     from loop.services.learning.feed_generator import FeedGenerationService
-    
+
     feed_service = FeedGenerationService(session)
     success = await feed_service.mark_feed_completed(current_user.id, feed_id)
-    
+
     if not success:
         raise HTTPException(status_code=404, detail="Feed not found")
-    
+
     return {"message": "Feed marked as completed"}
 
 
@@ -510,28 +538,28 @@ async def get_user_dashboard(
 ) -> Any:
     """Get user's learning dashboard data."""
     dao = LearningDAO(session)
-    
+
     # Get active topics
     active_topics = await dao.user_topics.get_user_topics(
         current_user.id, is_active=True
     )
-    
+
     # Get today's feed
     today_feed = await dao.feeds.get_user_feed_for_date(
         current_user.id,
         datetime.utcnow(),
     )
-    
+
     # Get streak
     streak = await dao.feeds.get_user_streak(current_user.id)
-    
+
     # Get recent sessions
     recent_sessions = await dao.sessions.get_user_sessions(current_user.id, 5)
-    
+
     # Calculate stats (placeholder - would need more complex queries)
     total_mastered = 0  # Count of mastered subtopics
     total_time_hours = 0.0  # Total time spent learning
-    
+
     return UserDashboard(
         active_topics=active_topics,
         today_feed=today_feed,
@@ -551,30 +579,30 @@ async def get_topic_progress_summary(
 ) -> Any:
     """Get progress summary for a topic."""
     dao = LearningDAO(session)
-    
+
     # Get topic
     topic = await dao.topics.get_topic(topic_id)
     if not topic:
         raise HTTPException(status_code=404, detail="Topic not found")
-    
+
     # Get subtopics
     subtopics = await dao.subtopics.get_subtopics_by_topic(topic_id, is_active=True)
-    
+
     # Get progress for all subtopics
     progress_list = await dao.progress.get_user_progress_by_topic(
         current_user.id, topic_id
     )
-    
+
     # Calculate stats
     total_subtopics = len(subtopics)
     completed_count = sum(1 for p in progress_list if p.completed_at is not None)
     mastered_count = sum(
-        1 for p in progress_list 
+        1 for p in progress_list
         if p.mastery_level.value in ["mastered", "expert"]
     )
-    
+
     progress_percentage = (completed_count / total_subtopics * 100) if total_subtopics > 0 else 0
-    
+
     # Find current subtopic (next incomplete one)
     current_subtopic = None
     for subtopic in subtopics:
@@ -582,7 +610,7 @@ async def get_topic_progress_summary(
         if not progress or progress.completed_at is None:
             current_subtopic = subtopic
             break
-    
+
     return TopicProgress(
         topic=topic,
         total_subtopics=total_subtopics,
